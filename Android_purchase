@@ -1,0 +1,7 @@
+#!/bin/bash
+port=`ls /accountbook/Android/purchase | grep sql | grep -oE '[0-9]+'`
+
+for i in $port
+do
+mysql -uroot -padmin Android < /accountbook/Android/purchase/purchase$i.sql
+done

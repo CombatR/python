@@ -1,0 +1,9 @@
+#!/bin/bash
+
+port=`ls /accountbook/Android/avatar | grep sql | grep -oE '[0-9]+'`
+
+for i in $port
+do
+mysql -uroot -padmin Android < /accountbook/Android/avatar/avatar$i.sql
+mysql -uroot -padmin -e "delete from Android.Avatar where Robot=1"
+done

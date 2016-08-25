@@ -1,0 +1,171 @@
+#!/bin/bash
+DAT=`date +%F`
+TIM=`date +%T`
+# 判断参数数量
+if [ $# -eq 0 ]; then
+	echo -e "\033[31m Usage: $0  {service1 ...service2...} \033[0m"
+	exit 1
+fi
+
+# 判断第一个参数是否正确
+if [ "$1" != "AccountService" ] && [ "$1" != "GameService" ] && [ "$1" != "ChargeService" ] && [ "$1" != "manage" ] && [ "$1" != "gmtools" ] && [ "$1" != "UpdateService" ] && [ "$1" != "SdkService" ] && [ "$1" != "zoneService" ]; then
+	echo -e "\033[31m The  argev Use:{AccountService|GameService|ChargeService|manage|gmtools|UpdateService|zoneService}\033[0m"
+	exit 2
+fi
+
+
+# 询问用户是否需要指定版本号
+
+num='[0-9]*'
+num1='[0-9]*[a-Z]*'
+read -p "Do you want to specify a version number? (y/n) " choice
+if [ "$choice" == "y" ]; then
+	read -p "Please enter version number: " n
+	if [[ $n != $num ]] || [[ $n == $num1 ]]; then
+		echo -e "\033[31m Please enter numbers\033[0m"
+		exit 3
+	fi
+fi
+############################################################################################
+svn_dir=/SVN/trunk/version_guaji/chuanshi/0.10.0.0
+scp_dir=huangqun@192.168.1.30:/home/share/servers/game02/0.10.0.0
+ssh_way=/home/share/servers/game02/0.10.0.0
+ver_way=192.168.1.30:/home/share/servers/game02/0.10.0.0
+default_dir=`ssh huangqun@192.168.1.30 "ls /home/share/servers/game02/0.10.0.0/$1" | sort -nr | head -n 1`
+argv=$n
+ver_dir=${argv:-$default_dir}
+
+
+
+while [ $# -gt 0 ]
+do
+if [ -d $1 ]; then
+	rm -rf $1
+fi
+
+if [ $1 == "AccountService" ] && [ 0 -eq `ssh huangqun@192.168.1.30 "[ -e $ssh_way/$1/$ver_dir ]"; echo $?` ]; then
+	mkdir -p ./$1/accountService
+	
+	cp /home/Directory/config/accountService.js ./$1/
+	cp $svn_dir/$1/accountService.conf.tmpl ./$1
+	cp $svn_dir/$1/node_modules/fibers/bin/linux-x64-v8-3.14/fibers.node ./$1
+	cp $svn_dir/GameService/protobuf/build/Release/protobuf_for_node.node ./$1
+	scp $scp_dir/$1/$ver_dir/index.node  ./$1/accountService
+	#scp $scp_dir/updateAccDb/$ver_dir/index.node ./$1/updateAccDb
+	zip -r AccountService${DAT}.zip AccountService/*
+	rm -rf $1
+	echo -e "$1\n$DAT $TIM\n$ver_way/$1/$ver_dir\n$ver_way/updateAccDb/$ver_dir\n"  >> /home/Directory/version
+elif [ $1 == "ChargeService" ] && [ 0 -eq ` ssh huangqun@192.168.1.30 "[ -e $ssh_way/$1/$ver_dir ]"; echo $?` ]; then
+	mkdir -p ./$1/chargeService
+
+	cp /home/Directory/config/GBusCharge.js ./$1/
+	cp $svn_dir/$1/GBusCharge.conf.tmpl ./$1
+	scp $scp_dir/$1/$ver_dir/index.node ./$1/chargeService
+	zip -r ChargeService${DAT}.zip ChargeService/*
+	rm -rf $1
+	echo -e "$1\n$DAT $TIM\n$ver_way/$1/$ver_dir\n"  >> /home/Directory/version
+elif [ $1 == "GameService" ] && [ 0 -eq ` ssh huangqun@192.168.1.30 "[ -e $ssh_way/$1/$ver_dir ]"; echo $?` ]; then
+	mkdir -p ./$1/{gameService,conf,mergetool,game/{sandprocess,sandplayoff}}
+	
+	cp /home/Directory/config/{gameService.js,mergetool.js} ./$1/
+	cp $svn_dir/$1/GameService.conf.tmpl ./$1/gameService.conf.tmpl
+	cp $svn_dir/$1/protobuf/build/Release/protobuf_for_node.node ./$1
+	cp $svn_dir/$1/node_modules/fibers/bin/linux-x64-v8-3.14/fibers.node ./$1
+	cp $svn_dir/$1/addon/build/Debug/game.node ./$1
+	cp $svn_dir/$1/conf/{robotFirstName.json,robotLastName.json,translate.json,fairyMap.json} ./$1/conf
+	cp /home/Directory/config/{sandplayoff.js,sandprocess.js} ./$1/game
+	scp $scp_dir/$1/$ver_dir/index.node ./$1/gameService
+	#scp $scp_dir/UpdateGameDb/$ver_dir/index.node ./$1/UpdateGameDb
+	scp $scp_dir/mergetool/$ver_dir/index.node ./$1/mergetool
+	scp $scp_dir/sandprocess/$ver_dir/index.node ./$1/game/sandprocess
+	scp $scp_dir/sandplayoff/$ver_dir/index.node ./$1/game/sandplayoff
+	zip -r GameService${DAT}.zip GameService/*
+	rm -rf $1
+	echo -e "$1\n$DAT $TIM\n$ver_way/$1/$ver_dir\n$ver_way/UpdateGameDb/$ver_dir\n$ver_way/sandprocess/$ver_dir\n$ver_way/sandplayoff/$ver_dir\n$ver_way/mergetool/$ver_dir\n"  >> /home/Directory/version
+elif [ $1 == "manage" ] && [ 0 -eq ` ssh huangqun@192.168.1.30 "[ -e $ssh_way/$1/$ver_dir ]"; echo $?` ]; then
+	mkdir -p ./$1/{manage,public}
+
+	cp /home/Directory/config/manage/app.js ./$1/
+	cp $svn_dir/$1/app.conf.tmpl ./$1
+	cp $svn_dir/$1/node_modules/fibers/bin/linux-x64-v8-3.14/fibers.node ./$1
+	cp $svn_dir/GameService/protobuf/build/Release/protobuf_for_node.node ./$1
+	cp -r $svn_dir/$1/public/* ./$1/public
+	find ./$1/public/ -name .svn | xargs rm -rf
+	scp $scp_dir/$1/$ver_dir/index.node ./$1/manage
+	zip -r manage${DAT}.zip manage/*
+	rm -rf $1
+	echo -e "$1\n$DAT $TIM\n$ver_way/$1/$ver_dir\n"  >> /home/Directory/version
+elif [ $1 == "gmtools" ] && [ 0 -eq ` ssh huangqun@192.168.1.30 "[ -e $ssh_way/$1/$ver_dir ]"; echo $?` ]; then
+	mkdir -p ./$1/{gmtools,public}
+	
+	cp /home/Directory/config/gmtools/app.js ./$1/
+	cp $svn_dir/$1/node_modules/fibers/bin/linux-x64-v8-3.14/fibers.node ./$1
+	cp $svn_dir/$1/config.json.tmpl ./$1
+	cp $svn_dir/GameService/protobuf/build/Release/protobuf_for_node.node ./$1
+	cp -r $svn_dir/$1/public/* ./$1/public
+	find ./$1/public/ -name .svn | xargs rm -rf
+	scp $scp_dir/$1/$ver_dir/index.node ./$1/gmtools
+	zip -r gmtools${DAT}.zip gmtools/*
+	rm -rf $1
+	echo -e "$1\n$DAT $TIM\n$ver_way/$1/$ver_dir\n"  >> /home/Directory/version
+elif [ $1 == "UpdateService" ] && [ 0 -eq ` ssh huangqun@192.168.1.30 "[ -e $ssh_way/$1/$ver_dir ]"; echo $?` ]; then
+	mkdir -p ./$1/updateService
+
+	cp /home/Directory/config/updateService.js ./$1/
+	cp $svn_dir/$1/node_modules/fibers/bin/linux-x64-v8-3.14/fibers.node ./$1
+	cp $svn_dir/$1/updateService.conf.tmpl ./$1
+	scp $scp_dir/$1/$ver_dir/index.node ./$1/updateService
+	zip -r UpdateService${DAT}.zip UpdateService/*
+	rm -rf $1
+	echo -e "$1\n$DAT $TIM\n$ver_way/$1/$ver_dir\n"  >> /home/Directory/version
+elif [ $1 == "SdkService" ] && [ 0 -eq `ssh huangqun@192.168.1.30 "[ -e $ssh_way/$1/$ver_dir ]"; echo $?` ]; then
+        mkdir -p ./$1/sdkService
+    
+        cp $svn_dir/$1/node_modules/fibers/bin/linux-x64-v8-3.14/fibers.node ./$1
+        cp $svn_dir/GameService/protobuf/build/Release/protobuf_for_node.node ./$1
+        cp $svn_dir/$1/sdkService.conf.tmpl ./$1
+        scp $scp_dir/$1/$ver_dir/index.node ./$1/sdkService
+        #scp $scp_dir/updateSdkDb/$ver_dir/index.node ./$1/updateSdkDb
+        zip -r SdkService${DAT}.zip SdkService/*
+        rm -rf $1
+        echo -e "$1\n$DAT $TIM\n$ver_way/$1/$ver_dir\n$ver_way/updateSdkDb/$ver_dir\n"  >> /home/Directory/version
+
+
+elif [ $1 == "zoneService" ] && [ 0 -eq ` ssh huangqun@192.168.1.30 "[ -e $ssh_way/$1/$ver_dir ]"; echo $?` ]; then
+	mkdir -p ./$1/{zoneService,conf}
+
+	cp /home/Directory/config/zoneService.js ./$1/
+	cp $svn_dir/$1/node_modules/fibers/bin/linux-x64-v8-3.14/fibers.node ./$1
+        cp $svn_dir/GameService/protobuf/build/Release/protobuf_for_node.node ./$1
+	cp $svn_dir/$1/conf/{robotFirstName.json,robotLastName.json} ./$1/conf
+	cp $svn_dir/$1/addon/build/Debug/game.node ./$1
+	cp $svn_dir/$1/zoneService.conf.tmpl ./$1
+	scp $scp_dir/$1/$ver_dir/index.node ./$1/zoneService
+	zip -r zoneService${DAT}.zip zoneService/*
+	rm -rf $1
+	echo -e "$1\n$DAT $TIM\n$ver_way/$1/$ver_dir\n"  >> /home/Directory/version
+
+else 
+	echo -e "$ver_way/$1/$ver_dir \033[31m Directory is not found ...... \033[0m"
+fi
+shift
+done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

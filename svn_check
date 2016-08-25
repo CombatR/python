@@ -1,0 +1,218 @@
+#!/bin/bash
+DAT=`date +%F`
+TIM=`date +%T`
+if [ $# == 0 ]; then
+	echo "USAGE:$0  workdir [branchname] [data-dir] [Automatically generated ZIP:y]"
+	exit 1 ;
+fi
+echo $1
+mkdir -p /home/Directory/$1/publish
+cd $1
+
+if [ $# -ge 2 ]; then
+	echo "Check out code from branch:$2"
+	echo "$DAT $TIM" >> /home/Directory/$1/publish/version.txt
+	echo "svn://192.168.1.30/dev/branches/server/gj/chuanshi/$2/gjserver" >> /home/Directory/$1/publish/version.txt
+	svn export svn://192.168.1.30/dev/branches/server/gj/chuanshi/$2  --username wangzhishuai --password qazwsx123456 | tail -1 &>> /home/Directory/$1/publish/version.txt
+	mv $2 ./server2
+else
+	echo "Check out code from trunk."
+	echo "$DAT $TIM" >> /home/Directory/$1/publish/version.txt
+	echo "svn://192.168.1.30/dev/trunk/server2" >> /home/Directory/$1/publish/version.txt
+	svn export svn://192.168.1.30/dev/trunk/server2 --username wangzhishuai --password qazwsx123456 | tail -1 &>> /home/Directory/$1/publish/version.txt
+fi
+
+if [ $# -ge 3 ]; then
+	echo "Check out Data from branch:$3"
+	echo "$DAT $TIM" >> /home/Directory/$1/publish/version.txt
+	echo "svn://192.168.1.30/dev/trunk/server2/gjserver/addon/tables/shipping/$3" >> /home/Directory/$1/publish/version.txt
+	svn export svn://192.168.1.30/dev/trunk/server2/gjserver/addon/tables/shipping/$3  --username wangzhishuai --password qazwsx123456 |tail -1 &>> /home/Directory/$1/publish/version.txt
+	rm -rf ./server2/gjserver/addon/tables
+	mv ./$3 ./server2/gjserver/addon/tables
+fi
+
+
+cd server2/gjserver/addon
+node-gyp configure
+node-gyp build -debug
+node-gyp build -release
+#cd ../protobuf
+#node-gyp rebuild
+cd ../../..
+#mkdir  publish/sql
+#cp server2/gjserver/sql/* publish/sql
+
+# game.node 瘦身
+/usr/bin/strip -s server2/gjserver/addon/build/Release/game.node
+/usr/bin/strip -s server2/gjserver/addon/build/Debug/game.node
+
+#生成各个服务器目录
+# AccountService 
+mkdir -p publish/AccountService/protobuf/build/Release
+mkdir publish/AccountService/utils
+cp /SVN/trunk/version_guaji/chuanshi/0.10.0.0/GameService/protobuf/build/Release/*.node publish/AccountService/protobuf/build/Release
+cp server2/gjserver/utils/* publish/AccountService/utils
+cp server2/gjserver/{accountHandlers.js,accountService.js} publish/AccountService/
+cp server2/gjserver/accountService.conf  publish/AccountService/accountService.conf.tmpl
+cp server2/gjserver/{service.js,game.desc,checkaccdb.js,updateAccDb.js} publish/AccountService/
+cp /home/Directory/$1/publish/version.txt publish/AccountService/
+
+# SdkService
+mkdir -p publish/SdkService/{utils,xml-crypto}
+cp -r publish/AccountService/protobuf publish/SdkService
+cp server2/gjserver/sdk.desc publish/SdkService
+cp server2/gjserver/service.js publish/SdkService
+cp server2/gjserver/sdkHandlers.js publish/SdkService
+cp server2/gjserver/sdkService.conf publish/SdkService/sdkService.conf.tmpl
+cp server2/gjserver/updateSdkDb.js publish/SdkService
+cp server2/gjserver/sdkService.js publish/SdkService
+cp server2/gjserver/checksdkdb.js publish/SdkService
+cp server2/gjserver/ms.pem publish/SdkService
+cp server2/gjserver/utils/* publish/SdkService/utils
+#cp -r server2/gjserver/xml-crypto/* publish/SdkService/xml-crypto
+cp /home/Directory/$1/publish/version.txt publish/SdkService
+#cp server2/gjserver/game.desc publish/SdkService
+
+
+
+
+# GameService
+mkdir -p publish/GameService/{conf,game}
+cp -r publish/AccountService/protobuf publish/GameService
+cp  server2/gjserver/conf/* publish/GameService/conf
+rm -f publish/GameService/conf/bannedWords.json
+cp  server2/gjserver/game/* publish/GameService/game
+cp -r publish/AccountService/utils publish/GameService
+cp server2/gjserver/{service.js,game.desc,gameService.js,gameHandlers.js,checkgamedb.js,updateGameDb.js,mergetool.conf,mergetool.js} publish/GameService/
+cp server2/gjserver/gameService.conf publish/GameService/GameService.conf.tmpl
+mkdir -p publish/GameService/addon/build/{Release,Debug}
+#cp server2/gjserver/addon/build/Debug/*.node publish/GameService/addon/build/Debug
+cp server2/gjserver/addon/build/Release/*.node publish/GameService/addon/build/Debug
+cp server2/gjserver/conf/bannedWords.json publish/GameService/conf
+cp /home/Directory/$1/publish/version.txt publish/GameService
+
+# zoneService
+mkdir -p publish/zoneService/{conf,utils,addon/build/Debug/}
+cp -r publish/AccountService/protobuf publish/zoneService
+cp -r server2/gjserver/zone publish/zoneService
+cp server2/gjserver/conf/{robotFirstName.json,robotLastName.json} publish/zoneService/conf
+cp server2/gjserver/addon/build/Release/game.node publish/zoneService/addon/build/Debug
+cp server2/gjserver/utils/{generalPost.js,utils.js,waitfor.js} publish/zoneService/utils
+cp server2/gjserver/{checkzonedb.js,game.desc,service.js,zoneHandler.js,zoneService.js} publish/zoneService
+cp server2/gjserver/zoneService.conf publish/zoneService/zoneService.conf.tmpl
+
+
+
+# archivetools
+
+mkdir publish/archivetools
+cp -r server2/archivetools/* publish/archivetools/
+
+
+
+
+
+
+
+# ChargeService
+mkdir publish/ChargeService
+cp server2/gjserver/Charge/* publish/ChargeService
+mv publish/ChargeService/GBusCharge.conf{,.tmpl}
+cp /home/Directory/$1/publish/version.txt publish/ChargeService
+
+# UpdateService
+mkdir publish/UpdateService
+cp server2/gjserver/UpdateService/* publish/UpdateService
+mv publish/UpdateService/updateService.conf{,.tmpl}
+cp -r server2/gjserver/utils publish/UpdateService
+cp /home/Directory/$1/publish/version.txt publish/UpdateService/
+
+# manage/GM
+cp -r server2/manage publish/manage
+mv publish/manage/app.conf{,.tmpl}
+cp /home/Directory/$1/publish/version.txt publish/manage
+cp -r server2/gmtools publish
+mv publish/gmtools/config.json{,.tmpl}
+cp /home/Directory/$1/publish/version.txt publish/gmtools
+
+rm -rf /home/Directory/$1/publish/version.txt
+
+
+
+
+
+
+# 自动生成服务器更新包
+####################################################################
+#read -p 'Whether to automatically (y/n): ' choice
+#if [ "$choice" != "y" ]; then
+#	exit 2
+#fi
+fun_dir=$1
+#定义自动生成更新包函数
+auto (){
+ # 执行 publish
+cp -r /home/Directory/$fun_dir/publish /home/Directory/Runing`date +%F`
+DIR=/home/Directory/Runing`date +%F`
+cp /config/accountService.conf $DIR/AccountService 
+cp /config/GBusCharge.conf $DIR/ChargeService
+cp /config/gameService.conf $DIR/GameService
+cp /config/config.json $DIR/gmtools
+cp /config/app.conf $DIR/manage
+cp /config/updateService.conf $DIR/UpdateService
+
+
+ #定义SVN目录
+svn_dir=/SVN/trunk/version_guaji/chuanshi/0.10.0.0/
+
+ # 复制文件到SVN目录
+cp -r /home/Directory/$fun_dir/publish/* $svn_dir
+
+
+ #获取不用更新的服务
+cd $svn_dir
+echo "$DAT $TIM" > /home/Directory/update.log
+svn st &>> /home/Directory/update.log
+NOTSER=`svn st | awk '{print $2}' | awk -F "/" '{print $1}' | uniq -u`
+for i in $NOTSER
+do
+	 #将只是version.txt文件有修改的服务 revert
+	cd $svn_dir
+	svn revert --depth files $i/version.txt &>> /home/Directory/update.log
+done
+
+
+ #将新添加的文件add到svn
+ADD=`svn st | awk '{print $1}'`
+for add in $ADD
+do
+if [ "$add" = "?" ]; then
+	# 将不在SVN版本控制范围内的文件add到SVN
+	cd $svn_dir
+	svn add * --force &>> /home/Directory/update.log
+fi
+done
+
+
+ # 获取需要更新的服务器
+#SER=`svn st | awk '{print $2}' | awk -F "/" '{print $1}' | uniq`
+#for arg in $SER
+#do
+ 	#生成更新服务器包
+#	sh /home/Directory/shengda $arg
+#done
+
+
+ # 删除publish目录
+rm -rf /home/Directory/Runing`date +%F`
+}
+
+
+choice=$4
+
+if [ "$choice" = "y" ]; then
+	auto
+else
+	exit 1
+fi
+
